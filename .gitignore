@@ -35,7 +35,7 @@ Thumbs.db
 # IDE files
 
 # Ignore backend config folder
-/backend/config/
+/backend/config/.config.env
 .vscode/
 .idea/
 *.sublime-workspace
