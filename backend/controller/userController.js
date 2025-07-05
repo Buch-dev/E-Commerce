@@ -74,7 +74,9 @@ export const requestPasswordReset = handleAsyncError(async (req, res, next) => {
     );
   }
 
-  const resetPasswordURL = `http://localhost/api/vi/reset/${resetToken}`;
+  const resetPasswordURL = `${
+    process.env.FRONTEND_URL || "http://localhost:3000"
+  }/api/v1/reset/${resetToken}`;
   const message = `Your password reset link is here: ${resetPasswordURL}. If you did not request this email, please ignore it.`;
 
   // Send Email

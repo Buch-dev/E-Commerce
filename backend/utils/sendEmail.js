@@ -1,7 +1,12 @@
 import nodemailer from "nodemailer";
 
 export const sendEmail = async (options) => {
-  // Create a transporter
+  // Validate required options
+  if (!options || !options.email || !options.subject || !options.message) {
+    throw new Error('Missing required email options: email, subject, and message are required');
+  }
+
+  // Create a transporter  // Create a transporter
   const transporter = nodemailer.createTransport({
     service: process.env.SMTP_SERVICE, // e.g., 'gmail', 'yahoo', etc.
     auth: {
