@@ -2,6 +2,7 @@ import handleAsyncError from "../middleware/handleAsyncError.js";
 import User from "../models/userModel.js";
 import HandleError from "../utils/handleError.js";
 import { sendToken } from "../utils/jwtToken.js";
+import { sendEmail } from "../utils/sendEmail.js";
 
 export const registerUser = handleAsyncError(async (req, res) => {
   const { name, email, password } = req.body;
@@ -65,13 +66,37 @@ export const requestPasswordReset = handleAsyncError(async (req, res, next) => {
   let resetToken;
   try {
     resetToken = user.generatePasswordResetToken();
-    await user.save({validateBeforeSave: false});
+    await user.save({ validateBeforeSave: false });
     console.log(resetToken);
   } catch (error) {
-    console.log(error);
-    
     return next(
       new HandleError("Could not save reset token, please try again later", 500)
+    );
+  }
+
+  const resetPasswordURL = `http://localhost/api/vi/reset/${resetToken}`;
+  const message = `Your password reset link is here: ${resetPasswordURL}. If you did not request this email, please ignore it.`;
+
+  // Send Email
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: "Password Reset Link",
+      message,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Email sent successfully to ${user.email}, please check your inbox`,
+    });
+  } catch (error) {
+    console.log(error);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return next(
+      new HandleError("Could not send email, please try again later", 500)
     );
   }
 });
