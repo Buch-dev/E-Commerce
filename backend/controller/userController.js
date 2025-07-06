@@ -169,7 +169,19 @@ export const updatePassword = handleAsyncError(async (req, res, next) => {
 
 // Update User Profile
 export const updateProfile = handleAsyncError(async (req, res, next) => {
-  const {name, email} = req.body;
+  const { name, email } = req.body;
+
+  // Validate inputs
+  if (!name || !email) {
+    return next(new HandleError("Name and email are required", 400));
+  }
+
+  // Check for duplicate email
+  const existingUser = await User.findOne({ email, _id: { $ne: req.user.id } });
+  if (existingUser) {
+    return next(new HandleError("Email already exists", 400));
+  }
+
   const updatedData = {
     name,
     email,
@@ -184,5 +196,82 @@ export const updateProfile = handleAsyncError(async (req, res, next) => {
     success: true,
     message: "Profile updated successfully",
     user,
+  });
+});
+
+// Admin - Getting user details
+export const getUsersList = handleAsyncError(async (req, res, next) => {
+  const users = await User.find();
+  if (!users || users.length === 0) {
+    return next(new HandleError("No users found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    users,
+  });
+});
+
+// Admin - Getting single user details
+export const getSingleUser = handleAsyncError(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return next(
+      new HandleError(`User not found with id ${req.params.id}`, 404)
+    );
+  }
+
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});
+
+// Admin - Change user role
+export const updateUserRole = handleAsyncError(async (req, res, next) => {
+  const { role } = req.body;
+  const newUserData = {
+    role,
+  };
+
+  if (!role) {
+    return next(new HandleError("Role is required", 400));
+  }
+
+  const user = await User.findByIdAndUpdate(req.params.id, newUserData, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!user) {
+    return next(
+      new HandleError(`User not found with id ${req.params.id}`, 404)
+    );
+  }
+
+  user.role = role;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: "User role updated successfully",
+    user,
+  });
+});
+
+// Admin - Delete user
+export const deleteUser = handleAsyncError(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return next(
+      new HandleError(`User not found with id ${req.params.id}`, 404)
+    );
+  }
+
+  await User.findByIdAndDelete(req.params.id);
+
+  res.status(200).json({
+    success: true,
+    message: "User deleted successfully",
   });
 });
