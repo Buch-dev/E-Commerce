@@ -83,7 +83,112 @@ export const getSingleProduct = handleAsyncError(async (req, res, next) => {
   res.status(200).json({ success: true, product });
 });
 
-// 6️⃣Admin - Getting all Products
+// 6️⃣ Creating and Updating Review
+export const createReviewForProduct = handleAsyncError(
+  async (req, res, next) => {
+    const { rating, comment, productId } = req.body;
+
+    if (!rating || !comment || !productId) {
+      return next(new HandleError("All fields are required", 400));
+    }
+
+    const review = {
+      user: req.user._id,
+      name: req.user.name,
+      rating: Number(rating),
+      comment,
+    };
+
+    const product = await Product.findById(productId);
+
+    if (!product) {
+      return next(new HandleError("Product not found", 404));
+    }
+
+    const reviewExists = product.reviews.find(
+      (rev) => rev.user.toString() === req.user.id.toString()
+    );
+
+    if (reviewExists) {
+      product.reviews = product.reviews.map((rev) =>
+        rev.user.toString() === req.user.id.toString()
+          ? { ...rev, rating, comment }
+          : rev
+      );
+    } else {
+      product.reviews.push(review);
+    }
+
+    product.numOfReviews = product.reviews.length;
+    let sum = 0;
+    product.reviews.forEach((rev) => {
+      sum += rev.rating;
+    });
+    product.ratings = sum / product.reviews.length;
+
+    await product.save({ validateBeforeSave: false });
+
+    res.status(201).json({
+      success: true,
+      message: "Review added successfully",
+      product,
+    });
+  }
+);
+
+// 7️⃣Getting Reviews
+export const getProductReviews = handleAsyncError(async (req, res, next) => {
+  const product = await Product.findById(req.query.id);
+
+  if (!product) {
+    return next(new HandleError("Product not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    reviews: product.reviews,
+  });
+});
+
+// 8️⃣ Deleting Reviews
+export const deleteReview = handleAsyncError(async (req, res, next) => {
+  const product = await Product.findById(req.query.productId);
+
+  if (!product) {
+    return next(new HandleError("Product not found", 404));
+  }
+
+  const reviews = product.reviews.filter(
+    (rev) => rev._id.toString() !== req.query.id.toString()
+  );
+
+  let sum = 0;
+  reviews.forEach((rev) => {
+    sum += rev.rating;
+  });
+
+  const ratings = reviews.length > 0 ? sum / reviews.length : 0;
+  const numOfReviews = reviews.length;
+  await Product.findByIdAndUpdate(
+    req.query.productId,
+    {
+      reviews,
+      ratings,
+      numOfReviews,
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Review deleted successfully",
+  });
+});
+
+// 9️⃣Admin - Getting all Products
 export const getAdminProducts = handleAsyncError(async (req, res, next) => {
   const products = await Product.find();
   res.status(200).json({

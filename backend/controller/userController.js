@@ -249,9 +249,6 @@ export const updateUserRole = handleAsyncError(async (req, res, next) => {
     );
   }
 
-  user.role = role;
-  await user.save();
-
   res.status(200).json({
     success: true,
     message: "User role updated successfully",
